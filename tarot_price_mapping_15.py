@@ -1,31 +1,93 @@
-# tarot_price_mapping_15.py
+# -*- coding: utf-8 -*-
 
-class TarotCard:
-    def __init__(self, name, card_type):
-        self.name = name
-        self.card_type = card_type
+import random
+from datetime import datetime, timedelta
+from tarot_price_mapping_9 import get_card_meaning
 
-# Define tarot cards
-trend_cards_group_1 = [TarotCard("Trend Card 1A", "trend"), TarotCard("Trend Card 1B", "trend"),
-                        TarotCard("Trend Card 1C", "trend"), TarotCard("Trend Card 1D", "trend")]
-amplitude_card_group_1 = TarotCard("Amplitude Card 1", "amplitude")
 
-trend_cards_group_2 = [TarotCard("Trend Card 2A", "trend"), TarotCard("Trend Card 2B", "trend"),
-                        TarotCard("Trend Card 2C", "trend"), TarotCard("Trend Card 2D", "trend")]
-amplitude_card_group_2 = TarotCard("Amplitude Card 2", "amplitude")
+def generate_15_card_price_trend(start_price, trend_cards, amplitude_cards, hours=23):
+    """
+    根据15张塔罗牌生成价格趋势。
 
-trend_cards_group_3 = [TarotCard("Trend Card 3A", "trend"), TarotCard("Trend Card 3B", "trend"),
-                        TarotCard("Trend Card 3C", "trend"), TarotCard("Trend Card 3D", "trend")]
-amplitude_card_group_3 = TarotCard("Amplitude Card 3", "amplitude")
+    参数：
+        start_price: float，起始价格
+        trend_cards: list[tuple[str, int]]，12张趋势塔罗
+        amplitude_cards: list[tuple[str, int]]，3张幅度塔罗
+        hours: int，默认从06:00到次日05:00
+    """
+    if len(trend_cards) != 12:
+        raise ValueError("15张模型中的趋势塔罗必须输入12张牌")
+    if len(amplitude_cards) != 3:
+        raise ValueError("15张模型中的幅度塔罗必须输入3张牌")
 
-time_segments = [f"{hour}:00" for hour in range(6, 24)] + ["05:00"]
+    all_cards = list(trend_cards) + list(amplitude_cards)
 
-def price_curve_generation(amplitude_card, volatility, strength):
-    price_range = volatility * strength
-    # Implement further price curve logic here
-    return price_range
+    trend_strength = 0
+    trend_persistence = 0
+    trend_direction_score = 0
+    for card_code, orientation in trend_cards:
+        semantics = get_card_meaning(card_code, orientation)
+        trend_strength += semantics["strength"]
+        trend_persistence += semantics["persistence"]
+        trend_direction_score += semantics["direction_score"]
 
-# Example usage
-if __name__ == "__main__":
-    print("Time Segments:", time_segments)
-    print("Price curve for Amplitude Card 1:", price_curve_generation(amplitude_card_group_1, 10, 1.5))
+    amplitude_volatility = 0
+    amplitude_strength = 0
+    for card_code, orientation in amplitude_cards:
+        semantics = get_card_meaning(card_code, orientation)
+        amplitude_volatility += semantics["volatility"]
+        amplitude_strength += semantics["strength"]
+
+    total_volatility = 0
+    for card_code, orientation in all_cards:
+        semantics = get_card_meaning(card_code, orientation)
+        total_volatility += semantics["volatility"]
+
+    avg_strength = (trend_strength / len(trend_cards)) * 0.75 + (amplitude_strength / len(amplitude_cards)) * 0.25
+    avg_volatility = (total_volatility / len(all_cards)) * 0.7 + (amplitude_volatility / len(amplitude_cards)) * 0.3
+    avg_persistence = trend_persistence / len(trend_cards)
+    avg_direction_score = trend_direction_score / len(trend_cards)
+
+    if avg_direction_score > 0.2:
+        overall_direction = "Bullish Trend"
+    elif avg_direction_score < -0.2:
+        overall_direction = "Bearish Trend"
+    else:
+        overall_direction = "Consolidation"
+
+    current_time = datetime.now().replace(hour=6, minute=0, second=0, microsecond=0)
+    current_price = start_price
+    timestamps = []
+    prices = []
+
+    for i in range(hours + 1):
+        timestamps.append(current_time + timedelta(hours=i))
+        prices.append(current_price)
+
+        if i < hours:
+            trend_progress = 0.35 + avg_persistence * (i / hours)
+            price_change_percent = avg_direction_score * avg_strength * trend_progress * 8
+            volatility_factor = 1 + random.uniform(-avg_volatility, avg_volatility) * 0.08
+            current_price = current_price * (1 + price_change_percent / 100) * volatility_factor
+
+    final_price = prices[-1]
+    price_change = final_price - start_price
+    change_percent = (price_change / start_price) * 100
+
+    return {
+        "model": "15-card",
+        "cards": list(all_cards),
+        "trend_cards": list(trend_cards),
+        "amplitude_cards": list(amplitude_cards),
+        "start_price": start_price,
+        "final_price": final_price,
+        "change": price_change,
+        "change_percent": change_percent,
+        "direction": overall_direction,
+        "avg_strength": avg_strength,
+        "avg_volatility": avg_volatility,
+        "avg_persistence": avg_persistence,
+        "avg_direction_score": avg_direction_score,
+        "timestamps": timestamps,
+        "prices": prices,
+    }

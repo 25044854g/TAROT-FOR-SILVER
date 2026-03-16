@@ -1,98 +1,30 @@
 # -*- coding: utf-8 -*-
 
 from datetime import datetime, timedelta
+import random
+from tarot_price_profiles import TAROT_CARD_PROFILES, TAROT_PRICE_SEMANTICS
+from tarot_named import tarot_cards
 
-# ==================== 塔罗牌价格特征映射 ====================
+# ==================== 统一表示方案 ====================
 
-TAROT_PRICE_SEMANTICS = {
-    # 大阿尔克那（22张）
-    "YR": {"direction": "neutral", "pattern": "consolidation", "volatility": 0.4, "strength": 0.5},  # 愚者
-    "MS": {"direction": "bullish", "pattern": "breakout", "volatility": 0.5, "strength": 0.8},  # 魔术师
-    "JS": {"direction": "neutral", "pattern": "consolidation", "volatility": 0.3, "strength": 0.6},  # 女祭司
-    "NH": {"direction": "bullish", "pattern": "uptrend", "volatility": 0.4, "strength": 0.7},  # 皇后
-    "HD": {"direction": "bullish", "pattern": "uptrend", "volatility": 0.5, "strength": 0.8},  # 皇帝
-    "JH": {"direction": "neutral", "pattern": "consolidation", "volatility": 0.3, "strength": 0.6},  # 教皇
-    "LR": {"direction": "neutral", "pattern": "reversal", "volatility": 0.6, "strength": 0.7},  # 恋人
-    "ZC": {"direction": "bullish", "pattern": "breakout", "volatility": 0.5, "strength": 0.85},  # 战车
-    "LL": {"direction": "bullish", "pattern": "uptrend", "volatility": 0.3, "strength": 0.75},  # 力量
-    "YS": {"direction": "neutral", "pattern": "consolidation", "volatility": 0.2, "strength": 0.5},  # 隐者
-    "MY": {"direction": "neutral", "pattern": "reversal", "volatility": 0.7, "strength": 0.6},  # 幸运之轮
-    "ZY": {"direction": "bearish", "pattern": "downtrend", "volatility": 0.4, "strength": 0.7},  # 正义
-    "DJ": {"direction": "bearish", "pattern": "consolidation", "volatility": 0.5, "strength": 0.6},  # 吊人
-    "SS": {"direction": "bearish", "pattern": "downtrend", "volatility": 0.6, "strength": 0.85},  # 死神
-    "JZ": {"direction": "neutral", "pattern": "consolidation", "volatility": 0.4, "strength": 0.6},  # 节制
-    "EM": {"direction": "volatile", "pattern": "zigzag", "volatility": 0.85, "strength": 0.8},  # 恶魔
-    "GT": {"direction": "bearish", "pattern": "downtrend", "volatility": 0.9, "strength": 0.95},  # 塔
-    "XX": {"direction": "bullish", "pattern": "recovery", "volatility": 0.3, "strength": 0.8},  # 星星
-    "YL": {"direction": "bearish", "pattern": "downtrend", "volatility": 0.6, "strength": 0.7},  # 月亮
-    "TY": {"direction": "bullish", "pattern": "uptrend", "volatility": 0.4, "strength": 0.9},  # 太阳
-    "SP": {"direction": "bullish", "pattern": "reversal", "volatility": 0.5, "strength": 0.85},  # 审判
-    "SJ": {"direction": "bullish", "pattern": "uptrend", "volatility": 0.3, "strength": 0.9},  # 世界
+ORIENTATION_UPRIGHT = 1
+ORIENTATION_REVERSED = 0
 
-    # 小阿尔克那 - 权杖（Wands）
-    "Q1": {"direction": "bullish", "pattern": "breakout", "volatility": 0.6, "strength": 0.7},
-    "Q2": {"direction": "volatile", "pattern": "zigzag", "volatility": 0.7, "strength": 0.6},
-    "Q3": {"direction": "bullish", "pattern": "uptrend", "volatility": 0.5, "strength": 0.75},
-    "Q4": {"direction": "neutral", "pattern": "consolidation", "volatility": 0.3, "strength": 0.5},
-    "Q5": {"direction": "bullish", "pattern": "uptrend", "volatility": 0.6, "strength": 0.7},
-    "Q6": {"direction": "bullish", "pattern": "uptrend", "volatility": 0.4, "strength": 0.8},
-    "Q7": {"direction": "bullish", "pattern": "uptrend", "volatility": 0.5, "strength": 0.75},
-    "Q8": {"direction": "bullish", "pattern": "breakout", "volatility": 0.6, "strength": 0.8},
-    "Q9": {"direction": "bullish", "pattern": "uptrend", "volatility": 0.3, "strength": 0.85},
-    "Q10": {"direction": "bullish", "pattern": "uptrend", "volatility": 0.4, "strength": 0.9},
-    "QP": {"direction": "neutral", "pattern": "consolidation", "volatility": 0.4, "strength": 0.5},
-    "QN": {"direction": "bullish", "pattern": "breakout", "volatility": 0.5, "strength": 0.7},
-    "QQ": {"direction": "bullish", "pattern": "uptrend", "volatility": 0.4, "strength": 0.8},
-    "QK": {"direction": "bullish", "pattern": "uptrend", "volatility": 0.3, "strength": 0.85},
-
-    # 小阿尔克那 - 圣杯（Cups）
-    "S1": {"direction": "bullish", "pattern": "recovery", "volatility": 0.3, "strength": 0.8},
-    "S2": {"direction": "neutral", "pattern": "consolidation", "volatility": 0.2, "strength": 0.4},
-    "S3": {"direction": "bullish", "pattern": "uptrend", "volatility": 0.4, "strength": 0.7},
-    "S4": {"direction": "neutral", "pattern": "consolidation", "volatility": 0.3, "strength": 0.5},
-    "S5": {"direction": "bearish", "pattern": "downtrend", "volatility": 0.5, "strength": 0.6},
-    "S6": {"direction": "neutral", "pattern": "consolidation", "volatility": 0.2, "strength": 0.4},
-    "S7": {"direction": "neutral", "pattern": "reversal", "volatility": 0.6, "strength": 0.6},
-    "S8": {"direction": "bearish", "pattern": "downtrend", "volatility": 0.4, "strength": 0.5},
-    "S9": {"direction": "bullish", "pattern": "uptrend", "volatility": 0.2, "strength": 0.75},
-    "S10": {"direction": "bullish", "pattern": "uptrend", "volatility": 0.3, "strength": 0.85},
-    "SP": {"direction": "neutral", "pattern": "consolidation", "volatility": 0.3, "strength": 0.5},
-    "SN": {"direction": "neutral", "pattern": "reversal", "volatility": 0.5, "strength": 0.6},
-    "SQ": {"direction": "bullish", "pattern": "uptrend", "volatility": 0.3, "strength": 0.8},
-    "SK": {"direction": "bullish", "pattern": "uptrend", "volatility": 0.2, "strength": 0.85},
-
-    # 小阿尔克那 - 宝剑（Swords）
-    "B1": {"direction": "bullish", "pattern": "breakout", "volatility": 0.6, "strength": 0.7},
-    "B2": {"direction": "neutral", "pattern": "consolidation", "volatility": 0.4, "strength": 0.5},
-    "B3": {"direction": "bearish", "pattern": "downtrend", "volatility": 0.7, "strength": 0.75},
-    "B4": {"direction": "bearish", "pattern": "downtrend", "volatility": 0.5, "strength": 0.6},
-    "B5": {"direction": "bearish", "pattern": "downtrend", "volatility": 0.6, "strength": 0.7},
-    "B6": {"direction": "bearish", "pattern": "downtrend", "volatility": 0.4, "strength": 0.6},
-    "B7": {"direction": "neutral", "pattern": "consolidation", "volatility": 0.5, "strength": 0.5},
-    "B8": {"direction": "bearish", "pattern": "downtrend", "volatility": 0.7, "strength": 0.8},
-    "B9": {"direction": "bearish", "pattern": "downtrend", "volatility": 0.8, "strength": 0.9},
-    "B10": {"direction": "bearish", "pattern": "downtrend", "volatility": 0.9, "strength": 0.95},
-    "BP": {"direction": "neutral", "pattern": "consolidation", "volatility": 0.4, "strength": 0.5},
-    "BN": {"direction": "bearish", "pattern": "downtrend", "volatility": 0.6, "strength": 0.7},
-    "BQ": {"direction": "bearish", "pattern": "downtrend", "volatility": 0.5, "strength": 0.75},
-    "BK": {"direction": "bearish", "pattern": "downtrend", "volatility": 0.4, "strength": 0.7},
-
-    # 小阿尔克那 - 钱币（Pentacles）
-    "J1": {"direction": "bullish", "pattern": "uptrend", "volatility": 0.3, "strength": 0.8},
-    "J2": {"direction": "volatile", "pattern": "zigzag", "volatility": 0.7, "strength": 0.6},
-    "J3": {"direction": "bullish", "pattern": "uptrend", "volatility": 0.4, "strength": 0.7},
-    "J4": {"direction": "neutral", "pattern": "consolidation", "volatility": 0.2, "strength": 0.5},
-    "J5": {"direction": "bearish", "pattern": "downtrend", "volatility": 0.6, "strength": 0.7},
-    "J6": {"direction": "neutral", "pattern": "consolidation", "volatility": 0.3, "strength": 0.5},
-    "J7": {"direction": "neutral", "pattern": "consolidation", "volatility": 0.5, "strength": 0.6},
-    "J8": {"direction": "bullish", "pattern": "uptrend", "volatility": 0.4, "strength": 0.75},
-    "J9": {"direction": "bullish", "pattern": "uptrend", "volatility": 0.3, "strength": 0.85},
-    "J10": {"direction": "bullish", "pattern": "uptrend", "volatility": 0.2, "strength": 0.9},
-    "JP": {"direction": "neutral", "pattern": "consolidation", "volatility": 0.3, "strength": 0.5},
-    "JN": {"direction": "bullish", "pattern": "uptrend", "volatility": 0.4, "strength": 0.7},
-    "JQ": {"direction": "bullish", "pattern": "uptrend", "volatility": 0.3, "strength": 0.8},
-    "JK": {"direction": "bullish", "pattern": "uptrend", "volatility": 0.2, "strength": 0.85},
+ORIENTATION_LABELS = {
+    ORIENTATION_UPRIGHT: "正位",
+    ORIENTATION_REVERSED: "逆位",
 }
+
+
+def normalize_orientation(orientation):
+    """
+    统一正逆位表示：1=正位，0=逆位。
+    """
+    if orientation not in (ORIENTATION_UPRIGHT, ORIENTATION_REVERSED):
+        raise ValueError("orientation 必须是 1(正位) 或 0(逆位)")
+    return orientation
+
+
 
 # ==================== 时间段定义 ====================
 
@@ -123,27 +55,18 @@ def get_card_meaning(card_code, orientation):
     获取牌的含义
     
     参数：
-        card_code: str，塔罗牌缩写编码 (如 'YR', 'Q6', 'SQ')
-        orientation: int，0=正位，1=逆位
+        card_code: str，塔罗牌缩写编码 (如 'YR', 'Q6', 'CQ')
+        orientation: int，1=正位，0=逆位
     
     返回：
         dict，牌的价格特征
     """
-    if card_code not in TAROT_PRICE_SEMANTICS:
+    if card_code not in tarot_cards or card_code not in TAROT_PRICE_SEMANTICS:
         raise ValueError(f"未知的牌编码: {card_code}")
-    
-    meaning = TAROT_PRICE_SEMANTICS[card_code].copy()
-    
-    # 逆位处理
-    if orientation == 1:
-        if meaning["direction"] == "bullish":
-            meaning["direction"] = "bearish"
-        elif meaning["direction"] == "bearish":
-            meaning["direction"] = "bullish"
-        # volatile 和 neutral 保持不变
-        meaning["strength"] *= 0.7  # 逆位强度降低30%
-    
-    return meaning
+
+    normalize_orientation(orientation)
+    profile_key = "upright" if orientation == ORIENTATION_UPRIGHT else "reversed"
+    return TAROT_CARD_PROFILES[card_code][profile_key].copy()
 
 
 def get_time_segment(position):
@@ -190,41 +113,31 @@ def merge_signals(signal1, signal2):
     返回：
         dict，融合后的综合信号
     """
-    # 方向融合逻辑
-    direction_mapping = {
-        ("bullish", "bullish"): "bullish",
-        ("bearish", "bearish"): "bearish",
-        ("bullish", "bearish"): "volatile",
-        ("bearish", "bullish"): "volatile",
-        ("bullish", "neutral"): "bullish",
-        ("bearish", "neutral"): "bearish",
-        ("neutral", "bullish"): "bullish",
-        ("neutral", "bearish"): "bearish",
-        ("neutral", "neutral"): "neutral",
-        ("volatile", "volatile"): "volatile",
-        ("bullish", "volatile"): "volatile",
-        ("bearish", "volatile"): "volatile",
-        ("volatile", "bullish"): "volatile",
-        ("volatile", "bearish"): "volatile",
-        ("volatile", "neutral"): "volatile",
-        ("neutral", "volatile"): "volatile",
-    }
-    
-    key = (signal1["direction"], signal2["direction"])
-    merged_direction = direction_mapping.get(key, "neutral")
-    
-    # 其他属性平均值
+    merged_direction_score = (signal1["direction_score"] + signal2["direction_score"]) / 2
+    if merged_direction_score > 0.2:
+        merged_direction = "bullish"
+    elif merged_direction_score < -0.2:
+        merged_direction = "bearish"
+    else:
+        merged_direction = "neutral"
+
     merged_volatility = (signal1["volatility"] + signal2["volatility"]) / 2
     merged_strength = (signal1["strength"] + signal2["strength"]) / 2
+    merged_persistence = (signal1["persistence"] + signal2["persistence"]) / 2
     
-    # 模式融合
     merged_pattern = f"{signal1['pattern']} + {signal2['pattern']}"
     
     return {
+        "direction_label": f"{signal1['direction_label']} + {signal2['direction_label']}",
         "direction": merged_direction,
         "pattern": merged_pattern,
+        "direction_score": merged_direction_score,
+        "strength_label": "中",
         "volatility": merged_volatility,
+        "volatility_label": "中",
         "strength": merged_strength,
+        "persistence": merged_persistence,
+        "persistence_label": "中",
     }
 
 
@@ -243,11 +156,14 @@ def calculate_confidence(signal):
     # 方向明确加分
     if signal["direction"] in ["bullish", "bearish"]:
         confidence += 15
-    elif signal["direction"] == "volatile":
-        confidence -= 20
+    elif signal["direction"] == "neutral":
+        confidence -= 5
     
     # 强度加分
     confidence += signal["strength"] * 20
+
+    # 持续性加分
+    confidence += signal.get("persistence", 0.5) * 15
     
     # 波动性扣分
     confidence -= signal["volatility"] * 15
@@ -285,7 +201,7 @@ def analyze_9_cards(cards):
         card_signals.append(signal)
         results["segments"][i] = {
             "card": card_code,
-            "orientation": "正位" if orientation == 0 else "逆位",
+            "orientation": ORIENTATION_LABELS[normalize_orientation(orientation)],
             "time": f"{time_segment['start']} - {time_segment['end']}",
             "signal": signal,
             "confidence": confidence
@@ -307,20 +223,92 @@ def analyze_9_cards(cards):
     return results
 
 
+def generate_9_card_price_trend(start_price, cards, hours=23):
+    """
+    根据9张塔罗牌生成价格趋势。
+
+    参数：
+        start_price: float，起始价格
+        cards: list[tuple[str, int]]，9张牌 [(card_code, orientation), ...]
+        hours: int，默认从 06:00 到次日 05:00，共 23 小时
+    """
+    if len(cards) != 9:
+        raise ValueError("9张模型必须输入9张牌")
+
+    total_strength = 0
+    total_volatility = 0
+    total_persistence = 0
+    total_direction_score = 0
+
+    for card_code, orientation in cards:
+        semantics = get_card_meaning(card_code, orientation)
+        total_strength += semantics["strength"]
+        total_volatility += semantics["volatility"]
+        total_persistence += semantics["persistence"]
+        total_direction_score += semantics["direction_score"]
+
+    avg_strength = total_strength / len(cards)
+    avg_volatility = total_volatility / len(cards)
+    avg_persistence = total_persistence / len(cards)
+    avg_direction_score = total_direction_score / len(cards)
+
+    if avg_direction_score > 0.2:
+        overall_direction = "Bullish Trend"
+    elif avg_direction_score < -0.2:
+        overall_direction = "Bearish Trend"
+    else:
+        overall_direction = "Consolidation"
+
+    current_time = datetime.now().replace(hour=6, minute=0, second=0, microsecond=0)
+    current_price = start_price
+    timestamps = []
+    prices = []
+
+    for i in range(hours + 1):
+        timestamps.append(current_time + timedelta(hours=i))
+        prices.append(current_price)
+
+        if i < hours:
+            trend_progress = 0.35 + avg_persistence * (i / hours)
+            price_change_percent = avg_direction_score * avg_strength * trend_progress * 8
+            volatility_factor = 1 + random.uniform(-avg_volatility, avg_volatility) * 0.08
+            current_price = current_price * (1 + price_change_percent / 100) * volatility_factor
+
+    final_price = prices[-1]
+    price_change = final_price - start_price
+    change_percent = (price_change / start_price) * 100
+
+    return {
+        "model": "9-card",
+        "cards": list(cards),
+        "start_price": start_price,
+        "final_price": final_price,
+        "change": price_change,
+        "change_percent": change_percent,
+        "direction": overall_direction,
+        "avg_strength": avg_strength,
+        "avg_volatility": avg_volatility,
+        "avg_persistence": avg_persistence,
+        "avg_direction_score": avg_direction_score,
+        "timestamps": timestamps,
+        "prices": prices,
+    }
+
+
 # ==================== 示例 ====================
 
 if __name__ == "__main__":
     # 示例：输入9张牌
     cards_9 = [
-        ("TY", 0),   # 牌1：太阳正位
-        ("XX", 0),   # 牌2：星星正位
-        ("LL", 0),   # 牌3：力量正位
-        ("MS", 0),   # 牌4：魔术师正位
-        ("SJ", 0),   # 牌5：世界正位
-        ("SP", 1),   # 牌6：审判逆位
-        ("YR", 1),   # 牌7：愚者逆位
-        ("MY", 1),   # 牌8：幸运之轮逆位
-        ("S10", 0),  # 牌9：圣杯10正位
+        ("TY", 1),   # 牌1：太阳正位
+        ("XX", 1),   # 牌2：星星正位
+        ("LL", 1),   # 牌3：力量正位
+        ("MS", 1),   # 牌4：魔术师正位
+        ("SJ", 1),   # 牌5：世界正位
+        ("SP", 0),   # 牌6：审判逆位
+        ("YR", 0),   # 牌7：愚者逆位
+        ("MY", 0),   # 牌8：幸运之轮逆位
+        ("C10", 1),  # 牌9：圣杯10正位
     ]
     
     results = analyze_9_cards(cards_9)
