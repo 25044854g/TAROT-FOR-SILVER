@@ -13,6 +13,7 @@ from tarot_price_mapping_9 import (
     generate_9_card_price_trend,
 )
 from tarot_price_mapping_15 import generate_15_card_price_trend
+from tarot_price_profiles import COMBINED_MODEL_BLEND
 from tarot_named import get_card_display_name, tarot_cards
 
 def parse_card_with_orientation(card_str):
@@ -85,6 +86,90 @@ def plot_prediction_result(result, title_label, line_color, fill_color, save_pat
     ax.plot(result["timestamps"], result["prices"], linewidth=2, marker="o", markersize=4, color=line_color)
     ax.fill_between(result["timestamps"], result["prices"], alpha=0.25, color=fill_color)
     plt.title(f"Tarot Silver Price Trend Prediction ({title_label})\n{result['direction']}", fontsize=14, fontweight="bold")
+    fig.text(0.05, 0.98, f"Date: {result['timestamps'][0].strftime('%Y-%m-%d')}", fontsize=11, verticalalignment='top', transform=fig.transFigure)
+    ax.xaxis.set_major_locator(HourLocator(interval=2))
+    ax.xaxis.set_major_formatter(DateFormatter('%H:%M'))
+    ax.set_xlabel('Time (2-hour intervals)', fontsize=12)
+    ax.set_ylabel('Price (USD/oz)', fontsize=12)
+    ax.grid(True, alpha=0.3)
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+
+    if save_path:
+        fig.savefig(save_path, dpi=300, bbox_inches='tight')
+
+    if show_chart:
+        plt.show()
+
+    return fig
+
+
+def build_combined_prediction_result(result_9, result_15):
+    start_price = result_9["start_price"]
+    nine_card_weight = COMBINED_MODEL_BLEND["nine_card_weight"]
+    fifteen_card_weight = COMBINED_MODEL_BLEND["fifteen_card_weight"]
+    total_weight = nine_card_weight + fifteen_card_weight
+    if total_weight <= 0:
+        raise ValueError("Combined model weights must be greater than 0")
+
+    combined_prices = []
+    for price_9, price_15 in zip(result_9["prices"], result_15["prices"]):
+        combined_delta = (
+            ((price_9 - start_price) * nine_card_weight)
+            + ((price_15 - start_price) * fifteen_card_weight)
+        ) / total_weight
+        combined_prices.append(start_price + combined_delta)
+
+    final_price = combined_prices[-1]
+    change = final_price - start_price
+    change_percent = (change / start_price) * 100
+
+    if change_percent > 1:
+        direction = "Bullish Trend"
+    elif change_percent > 0:
+        direction = "Slight Bullish"
+    elif change_percent < -1:
+        direction = "Bearish Trend"
+    elif change_percent < 0:
+        direction = "Slight Bearish"
+    else:
+        direction = "Consolidation"
+
+    return {
+        "model": "combined",
+        "cards": list(result_9.get("cards", [])) + list(result_15.get("cards", [])),
+        "start_price": start_price,
+        "final_price": final_price,
+        "change": change,
+        "change_percent": change_percent,
+        "direction": direction,
+        "avg_strength": (result_9["avg_strength"] + result_15["avg_strength"]) / 2,
+        "avg_volatility": (result_9["avg_volatility"] + result_15["avg_volatility"]) / 2,
+        "avg_persistence": (result_9["avg_persistence"] + result_15["avg_persistence"]) / 2,
+        "avg_direction_score": (result_9["avg_direction_score"] + result_15["avg_direction_score"]) / 2,
+        "nine_card_weight": nine_card_weight,
+        "fifteen_card_weight": fifteen_card_weight,
+        "timestamps": list(result_9["timestamps"]),
+        "prices": combined_prices,
+    }
+
+
+def plot_combined_prediction_result(result, save_path=None, show_chart=True):
+    fig, ax = plt.subplots(figsize=(14, 7))
+    ax.plot(
+        result["timestamps"],
+        result["prices"],
+        linewidth=2,
+        marker="o",
+        markersize=4,
+        color="#059669",
+    )
+    ax.fill_between(result["timestamps"], result["prices"], alpha=0.25, color="#6ee7b7")
+    plt.title(
+        f"Tarot Silver Price Trend Prediction (Combined Overlay)\n{result['direction']} | 9:{result['nine_card_weight']:.2f} 15:{result['fifteen_card_weight']:.2f}",
+        fontsize=14,
+        fontweight="bold",
+    )
     fig.text(0.05, 0.98, f"Date: {result['timestamps'][0].strftime('%Y-%m-%d')}", fontsize=11, verticalalignment='top', transform=fig.transFigure)
     ax.xaxis.set_major_locator(HourLocator(interval=2))
     ax.xaxis.set_major_formatter(DateFormatter('%H:%M'))
@@ -227,12 +312,16 @@ def main():
 
             result_9 = generate_9_card_price_trend(start_price, cards_9)
             result_15 = generate_15_card_price_trend(start_price, trend_cards, amplitude_cards)
+            combined_result = build_combined_prediction_result(result_9, result_15)
             print_result_summary(result_9, "9-Card")
             print_result_summary(result_15, "15-Card")
+            print_result_summary(combined_result, "Combined")
             save_path_9 = ask_save_path("tarot_trend_9")
             plot_prediction_result(result_9, "9-Card Tarot", "#1f77b4", "#93c5fd", save_path=save_path_9)
             save_path_15 = ask_save_path("tarot_trend_15")
             plot_prediction_result(result_15, "15-Card Tarot", "#d97706", "#fbbf24", save_path=save_path_15)
+            save_path_combined = ask_save_path("tarot_trend_combined")
+            plot_combined_prediction_result(combined_result, save_path=save_path_combined)
     
     except ValueError:
         print("Error: Invalid price input. Please enter a number.")

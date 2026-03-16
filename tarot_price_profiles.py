@@ -19,6 +19,11 @@ QUALITATIVE_PERSISTENCE = {
     "弱": 0.35,
 }
 
+COMBINED_MODEL_BLEND = {
+    "nine_card_weight": 0.5,
+    "fifteen_card_weight": 0.5,
+}
+
 DIRECTION_RULES = {
     "↗ 上涨": {"direction": "bullish", "pattern": "uptrend", "direction_score": 1.0},
     "↗ 反弹": {"direction": "bullish", "pattern": "rebound", "direction_score": 0.7},
